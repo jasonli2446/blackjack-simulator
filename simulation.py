@@ -52,9 +52,17 @@ class Simulation:
         self.reset_stats()
         start_time = time.time()
 
+        # Adjust update frequency based on total number of hands
+        if num_hands > 10000:
+            update_frequency = 2000  # Update every 2000 hands for large simulations
+        elif num_hands > 1000:
+            update_frequency = 1000  # Update every 1000 hands for medium simulations
+        else:
+            update_frequency = 100  # Keep original frequency for small simulations
+
         for i in range(num_hands):
-            # Update progress every 100 hands
-            if display_progress and i > 0 and i % 100 == 0:
+            # Update progress with the new frequency
+            if display_progress and i > 0 and i % update_frequency == 0:
                 progress = i / num_hands * 100
                 elapsed_time = time.time() - start_time
                 estimated_total = elapsed_time / i * num_hands
@@ -71,8 +79,45 @@ class Simulation:
             if self.game.player.balance < self.bet_size:
                 self.game.player.balance = 1000.0  # Reset balance
 
-            # Play a hand
-            result, _, _, bet, win_amount = self.game.play_round(self.bet_size)
+            # Play a hand - initial deal and blackjack check
+            result, player_hand, dealer_hand, bet, win_amount = self.game.play_round(
+                self.bet_size
+            )
+
+            # Complete the round if it's not already resolved by blackjack
+            if result == "continue":
+                # Play through player turn using perfect strategy
+                player_bust = self.game.player_turn()
+
+                if player_bust:
+                    result = "dealer_wins"
+                else:
+                    # Play through dealer turn
+                    dealer_bust = self.game.dealer_turn()
+
+                    # Determine the winner
+                    if dealer_bust:
+                        result = "player_wins"
+                        self.game.player.receive_winnings(
+                            self.game.bet * 2
+                        )  # Return bet + win
+                    else:
+                        # Compare hands
+                        player_value = self.game.player.hand.get_value()
+                        dealer_value = self.game.dealer.hand.get_value()
+
+                        if player_value > dealer_value:
+                            result = "player_wins"
+                            self.game.player.receive_winnings(
+                                self.game.bet * 2
+                            )  # Return bet + win
+                        elif dealer_value > player_value:
+                            result = "dealer_wins"
+                        else:
+                            result = "push"
+                            self.game.player.receive_winnings(
+                                self.game.bet
+                            )  # Return the bet
 
             # Update statistics
             self.hands_played += 1
