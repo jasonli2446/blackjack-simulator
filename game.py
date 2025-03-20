@@ -43,19 +43,11 @@ class Game:
         self.player.clear_hands()
         self.dealer.clear_hand()
 
-        # Debugging: Print hands after clearing
-        print(f"DEBUG: Player hand after clearing: {self.player.hand.cards}")
-        print(f"DEBUG: Dealer hand after clearing: {self.dealer.hand.cards}")
-
         # Deal initial cards
         self.player.hand.add_card(self.deck.deal_card())
         self.dealer.hand.add_card(self.deck.deal_card())
         self.player.hand.add_card(self.deck.deal_card())
         self.dealer.hand.add_card(self.deck.deal_card())
-
-        # Debugging: Print hands after dealing initial cards
-        print(f"DEBUG: Player hand after dealing: {self.player.hand.cards}")
-        print(f"DEBUG: Dealer hand after dealing: {self.dealer.hand.cards}")
 
         # Set dealer's upcard
         self.dealer.set_upcard()

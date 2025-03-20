@@ -93,10 +93,6 @@ def play_game(show_strategy=True):
         time.sleep(1)
         display_game_state(game)
 
-        # Debugging: Print hands after dealing initial cards
-        print(f"DEBUG: Player hand after dealing: {game.player.hand.cards}")
-        print(f"DEBUG: Dealer hand after dealing: {game.dealer.hand.cards}")
-
         # Check for blackjack
         if result == "player_blackjack":
             print("Blackjack! You win 3:2.")
@@ -198,18 +194,12 @@ def play_game(show_strategy=True):
             game.dealer.hand.add_card(game.deck.deal_card())
             display_game_state(game, hide_dealer=False)
 
-        # Debugging: Print dealer's hand after dealer's turn
-        print(f"DEBUG: Dealer's hand after dealer's turn: {game.dealer.hand.cards}")
-
         if game.dealer.hand.get_value() > 21:
             print("Dealer busts! You win.")
         else:
             # Determine winner
             player_value = game.player.hand.get_value()
             dealer_value = game.dealer.hand.get_value()
-
-            print(f"DEBUG: Player's hand: {game.player.hand.cards}")
-            print(f"DEBUG: Dealer's hand: {game.dealer.hand.cards}")
 
             if player_value > dealer_value:
                 print(f"You win! {player_value} beats dealer's {dealer_value}.")
