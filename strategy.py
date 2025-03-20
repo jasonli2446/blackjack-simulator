@@ -439,6 +439,9 @@ class Strategy:
         # Check for pairs first (if exactly 2 cards of the same rank)
         if player_hand.is_pair():
             rank = player_hand.cards[0].rank
+            # Convert face cards to "10" for strategy lookup
+            if rank in ["J", "Q", "K"]:
+                rank = "10"
             return self.pair_strategy.get(rank, {}).get(dealer_rank, self.HIT)
 
         # Check for soft hands (if hand contains an ace counting as 11)
