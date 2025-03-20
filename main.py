@@ -48,12 +48,16 @@ def display_game_state(game, hide_dealer=True):
     print("=" * 50 + "\n")
 
 
-def play_game():
+def play_game(show_strategy=True):
     """Main function to play the blackjack game."""
     game = Game()
 
     print("Welcome to Blackjack!")
-    print("In this game, you'll see the perfect strategy in action.")
+    print(
+        "In this game, you'll see the perfect strategy in action."
+        if show_strategy
+        else "In this game, you'll play without strategy suggestions."
+    )
     print("Your initial balance is $1000.00.\n")
 
     while game.player.balance > 0:
@@ -89,6 +93,10 @@ def play_game():
         time.sleep(1)
         display_game_state(game)
 
+        # Debugging: Print hands after dealing initial cards
+        print(f"DEBUG: Player hand after dealing: {game.player.hand.cards}")
+        print(f"DEBUG: Dealer hand after dealing: {game.dealer.hand.cards}")
+
         # Check for blackjack
         if result == "player_blackjack":
             print("Blackjack! You win 3:2.")
@@ -108,16 +116,25 @@ def play_game():
             display_game_state(game, hide_dealer=False)
             continue
 
+        elif result != "continue":
+            # Something unexpected happened
+            continue
+
         # Player's turn
         print("\nPlayer's turn...")
         time.sleep(1)
 
         first_action = True
         while True:
-            action = game.player.decide_action(game.dealer.upcard, first_action)
+            if show_strategy:
+                action = game.player.decide_action(game.dealer.upcard, first_action)
+                print(f"The strategy suggests to {action.upper()}.")
+            else:
+                action = input(
+                    "Choose your action (hit, stand, double, split): "
+                ).lower()
 
             if action == Strategy.HIT:
-                print("The strategy suggests to HIT.")
                 time.sleep(1)
                 game.player.hand.add_card(game.deck.deal_card())
                 display_game_state(game)
@@ -129,16 +146,13 @@ def play_game():
                 first_action = False
 
             elif action == Strategy.STAND:
-                print("The strategy suggests to STAND.")
                 time.sleep(1)
                 break
 
             elif action == Strategy.DOUBLE:
                 additional_bet = min(bet_amount, game.player.balance)
                 if additional_bet > 0:
-                    print(
-                        f"The strategy suggests to DOUBLE DOWN. Bet increased to ${bet_amount + additional_bet:.2f}"
-                    )
+                    print(f"Bet increased to ${bet_amount + additional_bet:.2f}")
                     game.player.balance -= additional_bet
                     game.bet += additional_bet
                 else:
@@ -157,9 +171,8 @@ def play_game():
 
             elif action == Strategy.SPLIT:
                 print(
-                    "The strategy suggests to SPLIT, but splitting is not fully implemented in this version."
+                    "Splitting is not fully implemented in this version. The strategy defaults to HIT."
                 )
-                print("The strategy defaults to HIT.")
                 time.sleep(1)
                 game.player.hand.add_card(game.deck.deal_card())
                 display_game_state(game)
@@ -185,12 +198,18 @@ def play_game():
             game.dealer.hand.add_card(game.deck.deal_card())
             display_game_state(game, hide_dealer=False)
 
+        # Debugging: Print dealer's hand after dealer's turn
+        print(f"DEBUG: Dealer's hand after dealer's turn: {game.dealer.hand.cards}")
+
         if game.dealer.hand.get_value() > 21:
             print("Dealer busts! You win.")
         else:
             # Determine winner
             player_value = game.player.hand.get_value()
             dealer_value = game.dealer.hand.get_value()
+
+            print(f"DEBUG: Player's hand: {game.player.hand.cards}")
+            print(f"DEBUG: Dealer's hand: {game.dealer.hand.cards}")
 
             if player_value > dealer_value:
                 print(f"You win! {player_value} beats dealer's {dealer_value}.")
@@ -210,25 +229,28 @@ def main():
     print("=" * 60)
     print("BLACKJACK SIMULATION PROGRAM")
     print("=" * 60)
-    print("1. Play Blackjack Game")
-    print("2. Run House Edge Simulation")
-    print("3. Exit")
+    print("1. Play Blackjack Game with Strategy Suggestions")
+    print("2. Play Blackjack Game without Strategy Suggestions")
+    print("3. Run House Edge Simulation")
+    print("4. Exit")
     print("=" * 60)
 
     while True:
-        choice = input("\nEnter your choice (1-3): ")
+        choice = input("\nEnter your choice (1-4): ")
 
         if choice == "1":
-            play_game()
+            play_game(show_strategy=True)
         elif choice == "2":
+            play_game(show_strategy=False)
+        elif choice == "3":
             from simulation import run_simulation
 
             run_simulation()
-        elif choice == "3":
+        elif choice == "4":
             print("\nThank you for using the Blackjack Simulation Program. Goodbye!")
             break
         else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 
 if __name__ == "__main__":

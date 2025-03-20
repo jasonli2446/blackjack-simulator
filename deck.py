@@ -26,4 +26,6 @@ class Deck:
         """
         # Randomly select a rank from the available ranks
         rank = random.choice(self.RANKS)
-        return Card(rank)
+        card = Card(rank)
+        print(f"DEBUG: Dealt card: {card}")
+        return card

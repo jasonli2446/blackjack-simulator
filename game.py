@@ -43,11 +43,19 @@ class Game:
         self.player.clear_hands()
         self.dealer.clear_hand()
 
+        # Debugging: Print hands after clearing
+        print(f"DEBUG: Player hand after clearing: {self.player.hand.cards}")
+        print(f"DEBUG: Dealer hand after clearing: {self.dealer.hand.cards}")
+
         # Deal initial cards
         self.player.hand.add_card(self.deck.deal_card())
         self.dealer.hand.add_card(self.deck.deal_card())
         self.player.hand.add_card(self.deck.deal_card())
         self.dealer.hand.add_card(self.deck.deal_card())
+
+        # Debugging: Print hands after dealing initial cards
+        print(f"DEBUG: Player hand after dealing: {self.player.hand.cards}")
+        print(f"DEBUG: Dealer hand after dealing: {self.dealer.hand.cards}")
 
         # Set dealer's upcard
         self.dealer.set_upcard()
@@ -189,29 +197,5 @@ class Game:
                 win_amount = 0
             return outcome, self.player.hand, self.dealer.hand, self.bet, win_amount
 
-        # Player's turn
-        player_busts = self.player_turn()
-        if player_busts:
-            return "dealer_wins", self.player.hand, self.dealer.hand, self.bet, 0
-
-        # Dealer's turn
-        dealer_busts = self.dealer_turn()
-        if dealer_busts:
-            win_amount = self.bet
-            return (
-                "player_wins",
-                self.player.hand,
-                self.dealer.hand,
-                self.bet,
-                win_amount,
-            )
-
-        # Determine winner
-        result = self.determine_winner()
-        win_amount = 0
-        if result == "player_wins":
-            win_amount = self.bet
-        elif result == "push":
-            win_amount = 0
-
-        return result, self.player.hand, self.dealer.hand, self.bet, win_amount
+        # Return the initial state without playing through player and dealer turns
+        return "continue", self.player.hand, self.dealer.hand, self.bet, 0
