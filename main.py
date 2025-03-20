@@ -72,10 +72,10 @@ def play_game(show_strategy=True):
     print("Your initial balance is $1000.00.\n")
 
     # Auto-bet setup
-    auto_bet = input("Would you like to enable auto-betting? (y/n): ").lower() == "y"
+    auto_bet = input("Would you like to enable auto-betting? (y/n): ").lower()
     auto_bet_amount = 0
 
-    if auto_bet:
+    if auto_bet in ["y", "yes"]:
         while True:
             try:
                 auto_bet_amount = float(input("Enter your auto-bet amount: "))
