@@ -436,6 +436,13 @@ class Strategy:
         """
         dealer_rank = dealer_upcard.rank
 
+        # Convert face cards to 10 for strategy lookup
+        if dealer_rank in ["J", "Q", "K"]:
+            dealer_rank = 10
+        # Convert numeric dealer_rank from string to int for strategy lookup
+        elif dealer_rank not in ["A"]:
+            dealer_rank = int(dealer_rank)
+
         # Check for pairs first (if exactly 2 cards of the same rank)
         if player_hand.is_pair():
             rank = player_hand.cards[0].rank
@@ -447,7 +454,7 @@ class Strategy:
         # Check for soft hands (if hand contains an ace counting as 11)
         elif player_hand.is_soft():
             total = player_hand.get_value()
-            return self.soft_strategy.get(total, {}).get(dealer_rank, self.STAND)
+            return self.soft_strategy.get(total, {}).get(dealer_rank, self.HIT)
 
         # Otherwise, use hard strategy
         else:
@@ -455,4 +462,4 @@ class Strategy:
             # For low totals not explicitly in our table, default to hit
             if total < 8:
                 return self.HIT
-            return self.hard_strategy.get(total, {}).get(dealer_rank, self.STAND)
+            return self.hard_strategy.get(total, {}).get(dealer_rank, self.HIT)

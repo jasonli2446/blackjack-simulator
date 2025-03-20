@@ -77,9 +77,14 @@ def play_game(show_strategy=True):
                 if bet_amount <= 0:
                     print("Bet amount must be positive.")
                 elif bet_amount > game.player.balance:
-                    print(
-                        f"Bet amount exceeds your balance of ${game.player.balance:.2f}."
+                    all_in = input(
+                        f"Bet exceeds your balance of ${game.player.balance:.2f}. Go all in? (y/n): "
                     )
+                    if all_in.lower() == "y":
+                        bet_amount = game.player.balance
+                        print(f"Going all in with ${bet_amount:.2f}!")
+                        break
+                    # If they say no, the loop continues for a new bet amount
                 else:
                     break
             except ValueError:
@@ -126,13 +131,16 @@ def play_game(show_strategy=True):
             if game.player.hand.get_value() == 21:
                 print("Player has 21. Standing.")
                 break
+
+            # Show strategy suggestion if enabled
             if show_strategy:
-                action = game.player.decide_action(game.dealer.upcard, first_action)
-                print(f"The strategy suggests to {action.upper()}.")
-            else:
-                action = input(
-                    "Choose your action (hit, stand, double, split): "
-                ).lower()
+                suggested_action = game.player.decide_action(
+                    game.dealer.upcard, first_action
+                )
+                print(f"The strategy suggests to {suggested_action.upper()}.")
+
+            # Always ask for player input regardless of strategy mode
+            action = input("Choose your action (hit, stand, double, split): ").lower()
 
             if action == Strategy.HIT:
                 time.sleep(1)
@@ -238,9 +246,6 @@ def play_game(show_strategy=True):
             else:
                 print(f"Push. Both have {player_value}.")
                 game.player.receive_winnings(game.bet)  # Return the bet on push
-
-        # Wait for user to continue
-        input("\nPress Enter to continue...")
 
     print("\nYou're out of money! Game over.")
 
