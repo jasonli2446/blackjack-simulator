@@ -77,3 +77,21 @@ class Player:
         """Clear the player's hand and split hands."""
         self.hand.clear()
         self.split_hands = []
+
+    def split_hand(self):
+        """
+        Split the current hand into two separate hands.
+
+        Returns:
+            Hand: The new split hand
+        """
+        if not self.hand.is_pair() or len(self.hand.cards) != 2:
+            return None
+
+        # Create a new hand with the second card only (just tracking the split)
+        # Note: The actual splitting logic happens in main.py for clarity
+        new_hand = Hand()
+        new_hand.add_card(self.hand.cards[1])
+        self.split_hands.append(new_hand)
+
+        return new_hand

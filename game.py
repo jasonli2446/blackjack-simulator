@@ -88,7 +88,14 @@ class Game:
             bool: True if the player busts, False otherwise.
         """
         first_action = True
+        bust = False
 
+        # Handle potential splits
+        split_result = self.handle_splits()
+        if split_result:
+            return split_result  # Special handling for splits in simulation
+
+        # Regular (non-split) play
         while True:
             action = self.player.decide_action(self.dealer.upcard, first_action)
 
@@ -113,12 +120,90 @@ class Game:
                 return self.player.hand.get_value() > 21  # True if bust
 
             elif action == Strategy.SPLIT:
-                # Implementation of split action would go here
-                # This is more complex, as it involves creating multiple hands
-                # For simplicity in this initial implementation, we'll treat split as hit
-                self.player.hand.add_card(self.deck.deal_card())
-                if self.player.hand.get_value() > 21:
-                    return True  # Player busts
+                # Simplified simulation implementation
+                return self.handle_splits()
+
+    def handle_splits(self):
+        """
+        Handle splitting in the simulation.
+
+        For simulation purposes, we'll play each split hand separately
+        and track overall results.
+
+        Returns:
+            bool: True if all split hands bust, False otherwise
+        """
+        # Check if we should split
+        if not self.player.hand.is_pair() or len(self.player.hand.cards) != 2:
+            return False  # Not a valid split situation
+
+        # Split the hand
+        split_hand = self.player.split_hand()
+
+        # Place additional bet for the split hand
+        additional_bet = min(self.bet, self.player.balance)
+        if additional_bet <= 0:
+            return False  # Not enough balance to split
+
+        self.player.balance -= additional_bet
+        split_bet = additional_bet
+
+        # Deal one more card to each hand
+        self.player.hand.add_card(self.deck.deal_card())
+        split_hand.add_card(self.deck.deal_card())
+
+        # Play each hand according to strategy
+        first_hand_bust = self.play_hand(self.player.hand)
+        split_hand_bust = self.play_hand(split_hand)
+
+        # In simulation, just return whether both hands bust
+        return first_hand_bust and split_hand_bust
+
+    def play_hand(self, hand):
+        """
+        Play a single hand according to strategy.
+
+        Args:
+            hand (Hand): The hand to play
+
+        Returns:
+            bool: True if the hand busts, False otherwise
+        """
+        first_action = True
+
+        while True:
+            # Determine action based on strategy
+            action = self.player.strategy.decide_action(hand, self.dealer.upcard)
+
+            if action == Strategy.HIT:
+                hand.add_card(self.deck.deal_card())
+                if hand.get_value() > 21:
+                    return True  # Hand busts
+                first_action = False
+
+            elif action == Strategy.STAND:
+                return False  # Hand stands, no bust
+
+            elif action == Strategy.DOUBLE:
+                # Only allowed on first action
+                if not first_action:
+                    hand.add_card(self.deck.deal_card())
+                    return hand.get_value() > 21
+
+                # Double the bet if possible
+                additional_bet = min(self.bet, self.player.balance)
+                if additional_bet > 0:
+                    self.player.balance -= additional_bet
+                    self.bet += additional_bet
+
+                # Take exactly one more card
+                hand.add_card(self.deck.deal_card())
+                return hand.get_value() > 21
+
+            else:  # Other actions default to hit in this simplified implementation
+                hand.add_card(self.deck.deal_card())
+                if hand.get_value() > 21:
+                    return True  # Hand busts
                 first_action = False
 
     def dealer_turn(self):
