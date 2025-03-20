@@ -250,7 +250,7 @@ class Strategy:
                 "A": self.HIT,
             },
             18: {
-                2: self.STAND,
+                2: self.DOUBLE,
                 3: self.DOUBLE,
                 4: self.DOUBLE,
                 5: self.DOUBLE,

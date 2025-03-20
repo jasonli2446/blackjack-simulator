@@ -122,6 +122,10 @@ def play_game(show_strategy=True):
 
         first_action = True
         while True:
+            # Don't ask for action if player has 21
+            if game.player.hand.get_value() == 21:
+                print("Player has 21. Standing.")
+                break
             if show_strategy:
                 action = game.player.decide_action(game.dealer.upcard, first_action)
                 print(f"The strategy suggests to {action.upper()}.")
@@ -146,6 +150,17 @@ def play_game(show_strategy=True):
                 break
 
             elif action == Strategy.DOUBLE:
+                # Only allow doubling on two cards and when total is less than 12
+                if (
+                    len(game.player.hand.cards) != 2
+                    or game.player.hand.get_value() >= 12
+                ):
+                    print(
+                        "Cannot double: only allowed on first two cards with value under 12."
+                    )
+                    first_action = False
+                    continue
+
                 additional_bet = min(bet_amount, game.player.balance)
                 if additional_bet > 0:
                     print(f"Bet increased to ${bet_amount + additional_bet:.2f}")
@@ -153,7 +168,7 @@ def play_game(show_strategy=True):
                     game.bet += additional_bet
                 else:
                     print(
-                        "Cannot double down due to insufficient balance. The strategy defaults to HIT."
+                        "Cannot double down due to insufficient balance. Default to HIT."
                     )
 
                 time.sleep(1)
@@ -186,27 +201,43 @@ def play_game(show_strategy=True):
         # Dealer's turn
         print("\nDealer's turn...")
         time.sleep(1)
+        print("Dealer reveals second card...")
         display_game_state(game, hide_dealer=False)
 
-        while game.dealer.should_hit():
-            print("Dealer hits...")
-            time.sleep(1)
-            game.dealer.hand.add_card(game.deck.deal_card())
-            display_game_state(game, hide_dealer=False)
+        # Handle dealer's actions and determine winner
+        dealer_bust = False
 
-        if game.dealer.hand.get_value() > 21:
-            print("Dealer busts! You win.")
+        # Only enter hit loop if dealer actually needs to hit
+        if game.dealer.should_hit():
+            while game.dealer.should_hit():
+                print("Dealer hits...")
+                time.sleep(1)
+                game.dealer.hand.add_card(game.deck.deal_card())
+                display_game_state(game, hide_dealer=False)
+
+                if game.dealer.hand.get_value() > 21:
+                    print("Dealer busts! You win.")
+                    dealer_bust = True
+                    break
+
+        # Determine winner if dealer didn't bust
+        if dealer_bust:
+            # Player wins because dealer busted
+            game.player.receive_winnings(game.bet * 2)  # Return bet + win amount
         else:
-            # Determine winner
+            # Compare hands
             player_value = game.player.hand.get_value()
             dealer_value = game.dealer.hand.get_value()
 
             if player_value > dealer_value:
                 print(f"You win! {player_value} beats dealer's {dealer_value}.")
+                game.player.receive_winnings(game.bet * 2)  # Return bet + win amount
             elif dealer_value > player_value:
                 print(f"You lose. Dealer's {dealer_value} beats your {player_value}.")
+                # No balance change needed as bet was already deducted
             else:
                 print(f"Push. Both have {player_value}.")
+                game.player.receive_winnings(game.bet)  # Return the bet on push
 
         # Wait for user to continue
         input("\nPress Enter to continue...")
