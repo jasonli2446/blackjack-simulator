@@ -24,7 +24,16 @@ def display_hand(hand, hide_second_card=False):
 
     if not hide_second_card:
         value = hand.get_value()
-        print(f"Value: {value}")
+        # Check if hand contains an Ace that could be counted as 1 or 11
+        has_ace = any(card.rank == "A" for card in hand.cards)
+        ace_counts_as_11 = has_ace and value <= 21 and value - 10 != hand.get_value()
+
+        if has_ace and ace_counts_as_11:
+            alt_value = value - 10  # Value if Ace counted as 1 instead of 11
+            print(f"Value: {alt_value}/{value}")  # Show both possible values
+        else:
+            print(f"Value: {value}")
+
         if value > 21:
             print("BUST!")
 
@@ -118,8 +127,8 @@ def play_game(show_strategy=True):
                     elif bet_amount > game.player.balance:
                         all_in = input(
                             f"Bet exceeds your balance of ${game.player.balance:.2f}. Go all in? (y/n): "
-                        )
-                        if all_in.lower() == "y":
+                        ).lower()
+                        if all_in in ["y", "yes"]:
                             bet_amount = game.player.balance
                             print(f"Going all in with ${bet_amount:.2f}!")
                             break
@@ -271,6 +280,12 @@ def play_game(show_strategy=True):
                 all_hands.append(second_hand)
                 all_bets.append(bet_amount)
 
+                # Check for splitting Aces - special handling
+                is_splitting_aces = original_first_card.rank == "A"
+
+                # Place additional bet for the second hand
+                game.player.balance -= bet_amount
+
                 # Check for splitting Aces
                 is_splitting_aces = original_first_card.rank == "A"
                 if is_splitting_aces:
@@ -366,178 +381,248 @@ def play_game(show_strategy=True):
                     round_completed = True
                     break
 
-                # Play each hand separately before revealing the dealer's cards
-                for hand_index, current_hand in enumerate(all_hands):
-                    hand_number = hand_index + 1
-                    current_bet = all_bets[hand_index]
+                else:
+                    # Play each hand separately before revealing the dealer's cards
+                    for hand_index in range(len(all_hands)):
+                        # Important: We need to use a direct index access here rather than iterating
+                        # through the list, as we might add more hands during iteration
+                        current_hand = all_hands[hand_index]
+                        hand_number = hand_index + 1
+                        current_bet = all_bets[hand_index]
 
-                    print(f"\n=== Playing Hand {hand_number} ===")
-                    print(f"Starting with card: {current_hand.cards[0]}")
+                        print(f"\n=== Playing Hand {hand_number} ===")
+                        print(f"Starting with card: {current_hand.cards[0]}")
 
-                    # Set the current hand as the active hand
-                    game.player.hand = current_hand
-                    game.bet = current_bet
+                        # Set the current hand as the active hand
+                        game.player.hand = current_hand
+                        game.bet = current_bet
 
-                    # Each hand gets exactly one card to start
-                    hand_first_action = True
-                    hand_bust = False
+                        # Each hand gets exactly one card to start - already done during setup
+                        hand_first_action = True
+                        hand_bust = False
 
-                    # Play this hand until stand or bust
-                    while True:
-                        display_game_state(game)
-
-                        # Don't ask for action if hand has 21
-                        if game.player.hand.get_value() == 21:
-                            print(f"Hand {hand_number} has 21. Standing.")
-                            break
-
-                        # Show strategy for this hand
-                        if show_strategy:
-                            suggested_action = game.player.decide_action(
-                                game.dealer.upcard, hand_first_action
-                            )
-                            print(
-                                f"The strategy suggests to {suggested_action.upper()} for Hand {hand_number}."
-                            )
-
-                        # Get action for this hand
-                        hand_action = input(
-                            f"Choose action for Hand {hand_number} (hit, stand, double): "
-                        ).lower()
-
-                        if hand_action == Strategy.HIT:
-                            time.sleep(1)
-                            game.player.hand.add_card(game.deck.deal_card())
-
-                            if game.player.hand.get_value() > 21:
-                                display_game_state(game)
-                                print(f"Hand {hand_number} busts!")
-                                hand_bust = True
-                                break
-
-                            hand_first_action = False
-
-                        elif hand_action == Strategy.STAND:
-                            time.sleep(1)
-                            break
-
-                        elif hand_action == Strategy.DOUBLE:
-                            # Check if doubling is allowed
-                            if (
-                                not hand_first_action  # Use this instead of card count check
-                                or game.player.hand.get_value() >= 12
-                            ):
-                                print(
-                                    "Cannot double: only allowed on first action with value under 12."
-                                )
-                                continue
-
-                            # Check if player has enough balance
-                            additional_bet = min(current_bet, game.player.balance)
-                            if additional_bet > 0:
-                                print(
-                                    f"Hand {hand_number} bet increased to ${current_bet + additional_bet:.2f}"
-                                )
-                                game.player.balance -= additional_bet
-                                game.bet += additional_bet
-                                all_bets[hand_index] += additional_bet
-                            else:
-                                print("Cannot double down due to insufficient balance.")
-                                continue
-
-                            # Take exactly one more card and end turn
-                            time.sleep(1)
-                            game.player.hand.add_card(game.deck.deal_card())
+                        # Play this hand until stand or bust
+                        while True:
                             display_game_state(game)
 
-                            if game.player.hand.get_value() > 21:
-                                print(f"Hand {hand_number} busts!")
-                                hand_bust = True
-
-                            break
-
-                        else:
-                            print(
-                                "Invalid action. Please choose hit, stand, or double."
-                            )
-
-                    # Store the final state of this hand
-                    all_results.append(
-                        {
-                            "hand": game.player.hand.cards.copy(),
-                            "value": game.player.hand.get_value(),
-                            "bust": hand_bust,
-                        }
-                    )
-
-                # All hands have been played, now dealer plays
-                # Only if at least one hand didn't bust
-                any_hand_not_bust = any(not result["bust"] for result in all_results)
-
-                if any_hand_not_bust:
-                    # Dealer's turn
-                    print("\nDealer's turn...")
-                    time.sleep(1)
-                    print("Dealer reveals second card...")
-                    game.player.hand = all_hands[0]  # Restore any hand for display
-                    display_game_state(game, hide_dealer=False)
-
-                    # Handle dealer's actions
-                    dealer_bust = False
-
-                    if game.dealer.should_hit():
-                        while game.dealer.should_hit():
-                            print("Dealer hits...")
-                            time.sleep(1)
-                            game.dealer.hand.add_card(game.deck.deal_card())
-                            display_game_state(game, hide_dealer=False)
-
-                            if game.dealer.hand.get_value() > 21:
-                                print("Dealer busts!")
-                                dealer_bust = True
+                            # Don't ask for action if hand has 21
+                            if game.player.hand.get_value() == 21:
+                                print(f"Hand {hand_number} has 21. Standing.")
                                 break
 
-                # Determine results for each hand
-                print("\n=== Final Results ===")
-                dealer_value = game.dealer.hand.get_value()
-                dealer_busted = dealer_value > 21
+                            # Show strategy for this hand
+                            if show_strategy:
+                                suggested_action = game.player.decide_action(
+                                    game.dealer.upcard, hand_first_action
+                                )
+                                print(
+                                    f"The strategy suggests to {suggested_action.upper()} for Hand {hand_number}."
+                                )
 
-                for hand_index, result in enumerate(all_results):
-                    hand_number = hand_index + 1
-                    hand_value = result["value"]
-                    hand_bet = all_bets[hand_index]
+                            # Get action for this hand
+                            hand_action = input(
+                                f"Choose action for Hand {hand_number} (hit, stand, double"
+                                # Only allow split if the hand has a pair
+                                + (", split" if game.player.hand.is_pair() else "")
+                                + "): "
+                            ).lower()
 
-                    print(f"\nHand {hand_number} Result:")
-                    print(f"Cards: {', '.join(str(card) for card in result['hand'])}")
-                    print(f"Value: {hand_value}")
+                            if hand_action == Strategy.HIT:
+                                time.sleep(1)
+                                game.player.hand.add_card(game.deck.deal_card())
 
-                    if result["bust"]:
-                        print(f"Hand {hand_number} busted. You lose ${hand_bet:.2f}.")
-                    elif dealer_busted:
-                        print(
-                            f"Dealer busted! Hand {hand_number} wins ${hand_bet:.2f}."
-                        )
-                        game.player.receive_winnings(hand_bet * 2)
-                    elif hand_value > dealer_value:
-                        print(
-                            f"Hand {hand_number} wins! {hand_value} beats dealer's {dealer_value}. You win ${hand_bet:.2f}."
-                        )
-                        game.player.receive_winnings(hand_bet * 2)
-                    elif dealer_value > hand_value:
-                        print(
-                            f"Hand {hand_number} loses. Dealer's {dealer_value} beats your {hand_value}. You lose ${hand_bet:.2f}."
-                        )
-                    else:
-                        print(
-                            f"Hand {hand_number} push. Both have {hand_value}. Your ${hand_bet:.2f} is returned."
-                        )
-                        game.player.receive_winnings(hand_bet)
+                                if game.player.hand.get_value() > 21:
+                                    display_game_state(game)
+                                    print(f"Hand {hand_number} busts!")
+                                    hand_bust = True
+                                    break
 
-                # Restore player's main hand
-                game.player.hand = Hand()
-                game.bet = 0
-                round_completed = True
-                break
+                                hand_first_action = False
+
+                            elif hand_action == Strategy.STAND:
+                                time.sleep(1)
+                                break
+
+                            elif hand_action == Strategy.DOUBLE:
+                                # Check if doubling is allowed
+                                if (
+                                    not hand_first_action
+                                    or game.player.hand.get_value() >= 12
+                                ):
+                                    print(
+                                        "Cannot double: only allowed on first action with value under 12."
+                                    )
+                                    continue
+
+                                # Check if player has enough balance
+                                additional_bet = min(current_bet, game.player.balance)
+                                if additional_bet > 0:
+                                    print(
+                                        f"Hand {hand_number} bet increased to ${current_bet + additional_bet:.2f}"
+                                    )
+                                    game.player.balance -= additional_bet
+                                    game.bet += additional_bet
+                                    all_bets[hand_index] += additional_bet
+                                else:
+                                    print(
+                                        "Cannot double down due to insufficient balance."
+                                    )
+                                    continue
+
+                                # Take exactly one more card and end turn
+                                time.sleep(1)
+                                game.player.hand.add_card(game.deck.deal_card())
+                                display_game_state(game)
+
+                                if game.player.hand.get_value() > 21:
+                                    print(f"Hand {hand_number} busts!")
+                                    hand_bust = True
+
+                                break
+
+                            elif (
+                                hand_action == Strategy.SPLIT
+                                and game.player.hand.is_pair()
+                            ):
+                                # Check if player has enough balance for another bet
+                                if game.player.balance < current_bet:
+                                    print(
+                                        "Cannot split: insufficient balance for additional bet."
+                                    )
+                                    continue
+
+                                # Get the cards to split
+                                split_first_card = game.player.hand.cards[0]
+                                split_second_card = game.player.hand.cards[1]
+
+                                # Check for splitting Aces - can't re-split aces
+                                if split_first_card.rank == "A":
+                                    print("Cannot re-split Aces.")
+                                    continue
+
+                                print(f"Splitting hand {hand_number}...")
+                                time.sleep(1)
+
+                                # Create two new hands from the current hand
+                                # First hand (replace current hand)
+                                game.player.hand = Hand()
+                                game.player.hand.add_card(split_first_card)
+                                game.player.hand.add_card(game.deck.deal_card())
+
+                                # Keep the current hand in its position
+                                all_hands[hand_index] = game.player.hand
+
+                                # Second hand (new hand)
+                                new_hand = Hand()
+                                new_hand.add_card(split_second_card)
+                                new_hand.add_card(game.deck.deal_card())
+
+                                # Add the new hand to our list of hands
+                                all_hands.append(new_hand)
+                                all_bets.append(current_bet)
+
+                                # Deduct the additional bet
+                                game.player.balance -= current_bet
+
+                                # Reset for the current hand after splitting
+                                hand_first_action = True
+
+                                # Display the new hand state
+                                display_game_state(game)
+
+                                # Continue with current hand (now with new cards)
+                                continue
+
+                            else:
+                                print(
+                                    "Invalid action. Please choose hit, stand, double"
+                                    + (", split" if game.player.hand.is_pair() else "")
+                                    + "."
+                                )
+
+                        # Store the final state of this hand
+                        all_results.append(
+                            {
+                                "hand": game.player.hand.cards.copy(),
+                                "value": game.player.hand.get_value(),
+                                "bust": hand_bust,
+                            }
+                        )
+
+                    # All hands have been played, now dealer plays
+                    # Only if at least one hand didn't bust
+                    any_hand_not_bust = any(
+                        not result["bust"] for result in all_results
+                    )
+
+                    if any_hand_not_bust:
+                        # Dealer's turn
+                        print("\nDealer's turn...")
+                        time.sleep(1)
+                        print("Dealer reveals second card...")
+                        game.player.hand = all_hands[0]  # Restore any hand for display
+                        display_game_state(game, hide_dealer=False)
+
+                        # Handle dealer's actions
+                        dealer_bust = False
+
+                        if game.dealer.should_hit():
+                            while game.dealer.should_hit():
+                                print("Dealer hits...")
+                                time.sleep(1)
+                                game.dealer.hand.add_card(game.deck.deal_card())
+                                display_game_state(game, hide_dealer=False)
+
+                                if game.dealer.hand.get_value() > 21:
+                                    print("Dealer busts!")
+                                    dealer_bust = True
+                                    break
+
+                    # Determine results for each hand
+                    print("\n=== Final Results ===")
+                    dealer_value = game.dealer.hand.get_value()
+                    dealer_busted = dealer_value > 21
+
+                    for hand_index, result in enumerate(all_results):
+                        hand_number = hand_index + 1
+                        hand_value = result["value"]
+                        hand_bet = all_bets[hand_index]
+
+                        print(f"\nHand {hand_number} Result:")
+                        print(
+                            f"Cards: {', '.join(str(card) for card in result['hand'])}"
+                        )
+                        print(f"Value: {hand_value}")
+
+                        if result["bust"]:
+                            print(
+                                f"Hand {hand_number} busted. You lose ${hand_bet:.2f}."
+                            )
+                        elif dealer_busted:
+                            print(
+                                f"Dealer busted! Hand {hand_number} wins ${hand_bet:.2f}."
+                            )
+                            game.player.receive_winnings(hand_bet * 2)
+                        elif hand_value > dealer_value:
+                            print(
+                                f"Hand {hand_number} wins! {hand_value} beats dealer's {dealer_value}. You win ${hand_bet:.2f}."
+                            )
+                            game.player.receive_winnings(hand_bet * 2)
+                        elif dealer_value > hand_value:
+                            print(
+                                f"Hand {hand_number} loses. Dealer's {dealer_value} beats your {hand_value}. You lose ${hand_bet:.2f}."
+                            )
+                        else:
+                            print(
+                                f"Hand {hand_number} push. Both have {hand_value}. Your ${hand_bet:.2f} is returned."
+                            )
+                            game.player.receive_winnings(hand_bet)
+
+                    # Restore player's main hand
+                    game.player.hand = Hand()
+                    game.bet = 0
+                    round_completed = True
+                    break
 
         if round_completed:
             continue  # Skip to the next round
