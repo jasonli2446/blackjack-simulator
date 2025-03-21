@@ -2,6 +2,7 @@ from deck import Deck
 from player import Player
 from dealer import Dealer
 from strategy import Strategy
+from hand import Hand
 
 
 class Game:
@@ -92,8 +93,10 @@ class Game:
 
         # Handle potential splits
         split_result = self.handle_splits()
-        if split_result:
-            return split_result  # Special handling for splits in simulation
+        if isinstance(split_result, dict):
+            # Split was executed, use the split results
+            self.split_results = split_result
+            return split_result["both_bust"]
 
         # Regular (non-split) play
         while True:
@@ -110,54 +113,117 @@ class Game:
 
             elif action == Strategy.DOUBLE:
                 # Double the bet if balance allows
-                additional_bet = min(self.bet, self.player.balance)
-                if additional_bet > 0:
-                    self.player.balance -= additional_bet
-                    self.bet += additional_bet
-
-                # Take exactly one more card and end turn
-                self.player.hand.add_card(self.deck.deal_card())
-                return self.player.hand.get_value() > 21  # True if bust
+                if self.player.balance >= self.bet:
+                    self.player.balance -= self.bet
+                    self.bet *= 2
+                    self.player.hand.add_card(self.deck.deal_card())
+                    return self.player.hand.get_value() > 21  # True if bust
+                else:
+                    print("Cannot double: insufficient balance.")
+                    continue
 
             elif action == Strategy.SPLIT:
-                # Simplified simulation implementation
                 return self.handle_splits()
 
     def handle_splits(self):
         """
         Handle splitting in the simulation.
-
-        For simulation purposes, we'll play each split hand separately
-        and track overall results.
-
         Returns:
-            bool: True if all split hands bust, False otherwise
+            dict: Results of split hands {"first_hand_result": result1, "second_hand_result": result2}
         """
         # Check if we should split
         if not self.player.hand.is_pair() or len(self.player.hand.cards) != 2:
             return False  # Not a valid split situation
 
-        # Split the hand
-        split_hand = self.player.split_hand()
+        original_bet = self.bet
+        original_hand = self.player.hand
 
-        # Place additional bet for the split hand
-        additional_bet = min(self.bet, self.player.balance)
+        # Split the hand
+        split_card = original_hand.cards[1]
+        original_hand.cards.pop()  # Remove second card
+
+        # Create second hand with the split card
+        second_hand = Hand()
+        second_hand.add_card(split_card)
+
+        # Place additional bet
+        additional_bet = min(original_bet, self.player.balance)
         if additional_bet <= 0:
-            return False  # Not enough balance to split
+            return False  # Not enough balance
 
         self.player.balance -= additional_bet
-        split_bet = additional_bet
 
-        # Deal one more card to each hand
-        self.player.hand.add_card(self.deck.deal_card())
-        split_hand.add_card(self.deck.deal_card())
+        # Deal one card to each hand
+        original_hand.add_card(self.deck.deal_card())
+        second_hand.add_card(self.deck.deal_card())
 
-        # Play each hand according to strategy
-        first_hand_bust = self.play_hand(self.player.hand)
-        split_hand_bust = self.play_hand(split_hand)
+        # Track results
+        results = {"total_win": 0, "first_hand_win": 0, "second_hand_win": 0}
 
-        # In simulation, just return whether both hands bust
-        return first_hand_bust and split_hand_bust
+        # Play first hand
+        first_hand_bust = self.play_hand(original_hand)
+
+        # Play second hand
+        self.player.hand = second_hand
+        second_hand_bust = self.play_hand(second_hand)
+
+        # Dealer plays (if either hand didn't bust)
+        if not (first_hand_bust and second_hand_bust):
+            dealer_bust = self.dealer_turn()
+            dealer_value = self.dealer.hand.get_value()
+
+            # Calculate first hand result
+            if not first_hand_bust:
+                first_value = original_hand.get_value()
+                if dealer_bust or first_value > dealer_value:
+                    results["first_hand_win"] = original_bet
+                    results["total_win"] += original_bet
+                    self.player.receive_winnings(original_bet * 2)
+                elif first_value == dealer_value:
+                    # Push
+                    self.player.receive_winnings(original_bet)
+
+            # Calculate second hand result
+            if not second_hand_bust:
+                second_value = second_hand.get_value()
+                if dealer_bust or second_value > dealer_value:
+                    results["second_hand_win"] = additional_bet
+                    results["total_win"] += additional_bet
+                    self.player.receive_winnings(additional_bet * 2)
+                elif second_value == dealer_value:
+                    # Push
+                    self.player.receive_winnings(additional_bet)
+
+        # Restore original hand
+        self.player.hand = original_hand
+
+        # Return both bust flag and win amounts
+        return {
+            "both_bust": first_hand_bust and second_hand_bust,
+            "results": results,
+            "hand_results": [
+                (
+                    "win"
+                    if not first_hand_bust
+                    and (dealer_bust or first_value > dealer_value)
+                    else (
+                        "push"
+                        if not first_hand_bust and first_value == dealer_value
+                        else "loss"
+                    )
+                ),
+                (
+                    "win"
+                    if not second_hand_bust
+                    and (dealer_bust or second_value > dealer_value)
+                    else (
+                        "push"
+                        if not second_hand_bust and second_value == dealer_value
+                        else "loss"
+                    )
+                ),
+            ],
+        }
 
     def play_hand(self, hand):
         """
@@ -191,14 +257,14 @@ class Game:
                     return hand.get_value() > 21
 
                 # Double the bet if possible
-                additional_bet = min(self.bet, self.player.balance)
-                if additional_bet > 0:
-                    self.player.balance -= additional_bet
-                    self.bet += additional_bet
-
-                # Take exactly one more card
-                hand.add_card(self.deck.deal_card())
-                return hand.get_value() > 21
+                if self.player.balance >= self.bet:
+                    self.player.balance -= self.bet
+                    self.bet *= 2
+                    hand.add_card(self.deck.deal_card())
+                    return hand.get_value() > 21
+                else:
+                    print("Cannot double: insufficient balance.")
+                    continue
 
             else:  # Other actions default to hit in this simplified implementation
                 hand.add_card(self.deck.deal_card())

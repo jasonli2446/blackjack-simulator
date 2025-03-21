@@ -52,13 +52,25 @@ class Simulation:
         self.reset_stats()
         start_time = time.time()
 
+        # Set essentially infinite balance to ensure player can always double/split
+        initial_balance = 100000000000.0
+        self.game.player.balance = initial_balance
+
+        # Track total bets separately to calculate house edge
+        total_bets_placed = 0.0
+        total_net_outcome = 0.0
+
         # Adjust update frequency based on total number of hands
-        if num_hands > 10000:
-            update_frequency = 2000  # Update every 2000 hands for large simulations
-        elif num_hands > 1000:
-            update_frequency = 1000  # Update every 1000 hands for medium simulations
+        if num_hands > 100000:
+            update_frequency = 20000
+        elif num_hands > 50000:
+            update_frequency = 10000
+        elif num_hands > 10000:
+            update_frequency = 2000
+        elif num_hands > 5000:
+            update_frequency = 1000
         else:
-            update_frequency = 100  # Keep original frequency for small simulations
+            update_frequency = 100
 
         for i in range(num_hands):
             # Update progress with the new frequency
@@ -72,12 +84,22 @@ class Simulation:
                 print(
                     f"Elapsed time: {elapsed_time:.1f}s, Estimated time remaining: {remaining_time:.1f}s"
                 )
-                print(f"Current house edge: {self.calculate_house_edge():.4f}%")
+                current_edge = (
+                    -total_net_outcome / (total_bets_placed) * 100
+                    if total_bets_placed > 0
+                    else 0
+                )
+                print(f"Current house edge: {current_edge:.4f}%")
                 print("-" * 50)
 
-            # Ensure the player has enough balance
-            if self.game.player.balance < self.bet_size:
-                self.game.player.balance = 1000.0  # Reset balance
+            # No need to check player balance - it's infinite
+
+            # Track initial bet
+            initial_bet = self.bet_size
+            total_bets_placed += initial_bet
+
+            # Record the balance before this hand
+            balance_before_hand = self.game.player.balance
 
             # Play a hand - initial deal and blackjack check
             result, player_hand, dealer_hand, bet, win_amount = self.game.play_round(
@@ -88,6 +110,36 @@ class Simulation:
             if result == "continue":
                 # Play through player turn using perfect strategy
                 player_bust = self.game.player_turn()
+
+                if hasattr(self.game, "split_results"):
+                    # Process split results correctly
+                    split_data = self.game.split_results
+
+                    # Track additional bets from splitting
+                    for hand_index in range(len(split_data["hand_results"])):
+                        if (
+                            hand_index > 0
+                        ):  # First hand is already counted in initial bet
+                            total_bets_placed += initial_bet
+
+                    # Loop through all split hands to count them properly
+                    for hand_result in split_data["hand_results"]:
+                        if hand_result == "win":
+                            self.normal_wins += 1
+                        elif hand_result == "blackjack":
+                            self.blackjacks_won += 1
+                        elif hand_result == "push":
+                            self.pushes += 1
+                        elif hand_result == "loss":
+                            self.losses += 1
+
+                    # We've already counted the original hand as played,
+                    # need to add the additional split hands
+                    self.hands_played += len(split_data["hand_results"]) - 1
+
+                    # Remove the split results
+                    delattr(self.game, "split_results")
+                    continue  # Skip the normal result processing
 
                 if player_bust:
                     result = "dealer_wins"
@@ -121,28 +173,31 @@ class Simulation:
 
             # Update statistics
             self.hands_played += 1
+            hand_profit = self.game.player.balance - balance_before_hand
+            total_net_outcome += hand_profit
 
+            # Update win/loss statistics by result type
             if result == "player_blackjack":
                 self.blackjacks_won += 1
-                self.total_profit += 1.5 * self.bet_size  # 3:2 payout
             elif result == "player_wins":
                 self.normal_wins += 1
-                self.total_profit += self.bet_size
             elif result == "push":
                 self.pushes += 1
-                # No change to total profit
-            else:  # dealer_wins
+            elif result == "dealer_wins" or result == "split_processed":
                 self.losses += 1
-                self.total_profit -= self.bet_size
 
-        # Calculate house edge
-        house_edge = self.calculate_house_edge()
+        # Calculate house edge based on total bets placed and net outcome
+        self.total_profit = total_net_outcome
+        house_edge = (
+            -total_net_outcome / total_bets_placed * 100 if total_bets_placed > 0 else 0
+        )
 
         # Display final statistics
         if display_progress:
             print("\nSimulation complete!")
             print(f"Hands played: {self.hands_played}")
-            print(f"Total profit/loss: ${self.total_profit:.2f}")
+            print(f"Total bets placed: ${total_bets_placed:.2f}")
+            print(f"Total profit/loss: ${total_net_outcome:.2f}")
             print(f"House edge: {house_edge:.4f}%")
             print("\nWin/Loss Statistics:")
             print(
@@ -171,6 +226,7 @@ class Simulation:
             return 0.0
 
         # House edge is the expected loss per bet as a percentage
+        # We now use total_profit directly as set in the run method
         return -self.total_profit / (self.hands_played * self.bet_size) * 100
 
 

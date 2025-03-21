@@ -23,13 +23,12 @@ class Dealer:
     def should_hit(self):
         """
         Determine if the dealer should hit according to fixed rules.
-
         Returns:
             bool: True if the dealer should hit, False otherwise.
-
-        Note:
-            The dealer must hit on 16 or less and stand on 17 or more (including soft 17).
         """
+        # Hit on soft 17
+        if self.hand.get_value() == 17 and self.hand.is_soft():
+            return True
         return self.hand.get_value() < 17
 
     def clear_hand(self):
