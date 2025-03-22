@@ -1,0 +1,16 @@
+{
+    "input": {
+        "use_video": true,
+        "display_video": true,
+        "keyboard_fallback": true,
+        "camera_id": 0
+    },
+    "game": {
+        "initial_balance": 1000.0,
+        "default_bet": 100.0,
+        "show_strategy": false
+    },
+    "ui": {
+        "animation_delay": 1.0
+    }
+}

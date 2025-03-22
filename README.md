@@ -20,6 +20,12 @@ This project is a Blackjack simulator that allows you to play the game of Blackj
 
 2. Ensure you have Python installed (version 3.6 or higher).
 
+3. Install the required dependencies:
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+
 ## Usage
 
 ### Playing the Game

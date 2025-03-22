@@ -1,4 +1,4 @@
-from hand import Hand
+from game.hand import Hand
 
 
 class Dealer:

@@ -1,5 +1,5 @@
-from hand import Hand
-from strategy import Strategy
+from game.hand import Hand
+from game.strategy import Strategy
 
 
 class Player:

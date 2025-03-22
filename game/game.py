@@ -1,8 +1,8 @@
-from deck import Deck
-from player import Player
-from dealer import Dealer
-from strategy import Strategy
-from hand import Hand
+from game.deck import Deck
+from game.player import Player
+from game.dealer import Dealer
+from game.strategy import Strategy
+from game.hand import Hand
 
 
 class Game:
