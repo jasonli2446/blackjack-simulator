@@ -243,6 +243,14 @@ def play_game():
                 bet_amount = min(auto_bet_amount, game.player.balance)
                 print(f"Auto-betting ${bet_amount:.2f}")
             else:
+                print("\n" + "=" * 40)
+                print("BETTING")
+                print("=" * 40)
+                print("Enter a number to bet that amount")
+                print("Enter 'q' to quit the game")
+                print("Enter 'a' to enable auto-betting")
+                print("=" * 40)
+
                 while True:
                     bet_input = input_handler.get_bet_amount(game.player.balance)
 

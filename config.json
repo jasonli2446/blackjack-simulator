@@ -8,7 +8,8 @@
     "game": {
         "initial_balance": 1000.0,
         "default_bet": 100.0,
-        "show_strategy": false
+        "show_strategy": false,
+        "auto_bet_enabled": true
     },
     "ui": {
         "animation_delay": 1.0

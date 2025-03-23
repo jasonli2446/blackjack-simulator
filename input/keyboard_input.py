@@ -49,6 +49,7 @@ class KeyboardInputHandler(InputHandler):
         Returns:
             float or str: The bet amount or command
         """
+        print(f"\nYour balance: ${current_balance:.2f}")
         bet_input = input("Enter bet amount: ")
 
         if bet_input.lower() == "q":
